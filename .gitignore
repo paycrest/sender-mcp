@@ -1,0 +1,5 @@
+/paycrest-mcp
+/paycrest-mcp.exe
+
+# Local secrets (use .env.example as the template)
+.env
