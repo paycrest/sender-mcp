@@ -2,6 +2,12 @@ package types
 
 import "time"
 
+// Bounds for paycrest_watch_sender_order max_wait_sec and embedded create-order poll (seconds).
+const (
+	WatchWaitMinSec = 10
+	WatchWaitMaxSec = 3600
+)
+
 // Config holds runtime settings for the MCP server and Paycrest HTTP client.
 // PAYCREST_API_KEY is expected from the MCP host env (per user), not from a shared .env in repos.
 type Config struct {
@@ -9,6 +15,10 @@ type Config struct {
 	APIKey       string // sent as API-Key for /v2/sender/* (see aggregator DynamicAuthMiddleware)
 	HTTPTimeout  time.Duration
 	MaxRespBytes int64
+	// AutoWatchAfterCreate runs order status polling after HTTP 201 from paycrest_create_order (default false for fast response). Set PAYCREST_AUTO_WATCH_AFTER_CREATE=true|1|yes|on to enable embedded poll + MCP progress.
+	AutoWatchAfterCreate bool
+	// CreateOrderMaxWaitSec is max seconds for that embedded poll (clamped WatchWaitMinSec–WatchWaitMaxSec). From PAYCREST_CREATE_ORDER_MAX_WAIT_SEC; default 900.
+	CreateOrderMaxWaitSec int
 }
 
 // Empty is a zero-size tool input for tools that take no arguments.
@@ -43,6 +53,15 @@ type ListOrdersIn struct {
 // GetOrderIn is the input for paycrest_get_sender_order.
 type GetOrderIn struct {
 	ID string `json:"id" jsonschema:"required payment order id"`
+}
+
+// WatchSenderOrderIn is the input for paycrest_watch_sender_order.
+type WatchSenderOrderIn struct {
+	ID string `json:"id" jsonschema:"required payment order id (UUID from create or get order)"`
+	// PollIntervalSec is seconds between GET polls (clamped 2–30). Default 3.
+	PollIntervalSec int `json:"poll_interval_sec,omitempty"`
+	// MaxWaitSec is maximum seconds to keep polling (clamped WatchWaitMinSec–WatchWaitMaxSec). Default 180.
+	MaxWaitSec int `json:"max_wait_sec,omitempty"`
 }
 
 // FiatProviderAccount matches Paycrest onramp pay-in / noblocks providerAccount JSON fields.

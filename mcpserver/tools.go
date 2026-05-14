@@ -13,8 +13,10 @@ import (
 	"github.com/paycrest/paycrest/sender-mcp/types"
 )
 
-// RegisterTools attaches Paycrest API tools to the MCP server.
-func RegisterTools(s *mcp.Server, c *paycrest.Client) {
+// RegisterTools attaches Paycrest API tools and prompts to the MCP server.
+func RegisterTools(s *mcp.Server, c *paycrest.Client, cfg types.Config) {
+	RegisterPrompts(s)
+
 	mcp.AddTool(s, &mcp.Tool{
 		Name:        "paycrest_get_currencies",
 		Description: "GET /v2/currencies — list fiat currencies supported by Paycrest.",
@@ -140,9 +142,16 @@ func RegisterTools(s *mcp.Server, c *paycrest.Client) {
 		return httpToolResult(status, data)
 	})
 
+	mcp.AddTool(s, &mcp.Tool{
+		Name:        "paycrest_watch_sender_order",
+		Description: "Poll GET /v2/sender/orders/{id} until the payment order reaches a terminal status (settled, cancelled, refunded, expired) or max_wait_sec elapses. Requires PAYCREST_API_KEY. Optional: poll_interval_sec (2–30, default 3), max_wait_sec (10–3600, default 180). HTTP 429 waits (Retry-After or exponential backoff) and polling continues. When the MCP client sends a progress token with the call, the server emits notifications/progress with order_status updates for the host UI. Returns a timestamped transcript plus the last successful GET JSON when stopped.",
+	}, func(ctx context.Context, req *mcp.CallToolRequest, in types.WatchSenderOrderIn) (*mcp.CallToolResult, any, error) {
+		return runWatchSenderOrder(ctx, c, req, in)
+	})
+
 	s.AddTool(&mcp.Tool{
 		Name:        "paycrest_create_order",
-		Description: "POST /v2/sender/orders — create a payment order (V2 payload: source/destination JSON objects, amount, etc.). Requires PAYCREST_API_KEY. On success (201), the tool output includes the raw JSON plus a short \"providerAccount\" section: onramp lists institution, accountIdentifier, accountName, validUntil, amountToTransfer, currency (fiat pay-in); offramp lists network, receiveAddress, validUntil (crypto receive).",
+		Description: "POST /v2/sender/orders — create a payment order (V2 payload). Requires PAYCREST_API_KEY. On HTTP 201: raw JSON + providerAccount pay-in summary + mandatory user ACTION block (lines \"ACTION\" then \"After you send the <fiat>…\" / generic funds line). When summarizing, copy that ACTION block verbatim after refund (if any) — do not replace with tool names or order UUIDs in the user-facing sentence. By default (PAYCREST_AUTO_WATCH_AFTER_CREATE off) returns quickly; you then call paycrest_watch_sender_order with data.id (see sender-mcp/.cursor/rules/paycrest-mcp-order-flow.mdc). Set PAYCREST_AUTO_WATCH_AFTER_CREATE=true to embed the same poll as paycrest_watch_sender_order (15s interval, 429 backoff, MCP progress) until terminal or PAYCREST_CREATE_ORDER_MAX_WAIT_SEC (default 900, max 3600).",
 		InputSchema: json.RawMessage(`{"type":"object","additionalProperties":true,"description":"JSON body for POST /v2/sender/orders (V2PaymentOrderPayload)."}`),
 	}, func(ctx context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		raw := req.Params.Arguments
@@ -158,6 +167,22 @@ func RegisterTools(s *mcp.Server, c *paycrest.Client) {
 		}
 		if status == http.StatusCreated {
 			data = appendCreateOrderProviderSummary(data)
+			if cfg.AutoWatchAfterCreate {
+				if id, ok := ExtractV2CreateOrderID(data); ok {
+					prog := watchProgressFromCallToolRequest(req)
+					watchText, _ := watchSenderOrderTranscript(ctx, c, types.WatchSenderOrderIn{
+						ID:              id,
+						PollIntervalSec: 15,
+						MaxWaitSec:      cfg.CreateOrderMaxWaitSec,
+					}, "--- Automated status watch (after create_order) ---", prog)
+					data = append(data, "\n\n"...)
+					data = append(data, watchText...)
+				} else {
+					data = appendCreateOrderWatchHint(data)
+				}
+			} else {
+				data = appendCreateOrderWatchHint(data)
+			}
 		}
 		return httpRawToolResult(status, data)
 	})

@@ -26,7 +26,7 @@ func main() {
 		Name:    "paycrest",
 		Version: "0.1.0",
 	}, nil)
-	mcpserver.RegisterTools(s, client)
+	mcpserver.RegisterTools(s, client, cfg)
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()

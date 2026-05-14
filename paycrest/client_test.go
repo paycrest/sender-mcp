@@ -51,3 +51,24 @@ func TestClient_Get_sender_requires_key(t *testing.T) {
 		t.Fatal("expected error without API key")
 	}
 }
+
+func TestParseRetryAfter(t *testing.T) {
+	t.Parallel()
+	h := http.Header{"Retry-After": {"42"}}
+	d, ok := ParseRetryAfter(h)
+	if !ok || d != 42*time.Second {
+		t.Fatalf("seconds: got %v ok=%v", d, ok)
+	}
+	if _, ok := ParseRetryAfter(nil); ok {
+		t.Fatal("nil header")
+	}
+	if _, ok := ParseRetryAfter(http.Header{}); ok {
+		t.Fatal("empty")
+	}
+	future := time.Now().UTC().Add(90 * time.Second).Format(http.TimeFormat)
+	h2 := http.Header{"Retry-After": {future}}
+	d2, ok2 := ParseRetryAfter(h2)
+	if !ok2 || d2 < 85*time.Second || d2 > 95*time.Second {
+		t.Fatalf("http-date: got %v ok=%v", d2, ok2)
+	}
+}

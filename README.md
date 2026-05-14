@@ -21,7 +21,8 @@ Go implementation of a [Model Context Protocol](https://modelcontextprotocol.io/
 - `main.go` — stdio MCP entrypoint  
 - `config/` — env loading (`Load` → `types.Config`)  
 - `paycrest/` — HTTP client for the aggregator  
-- `mcpserver/` — MCP tool registration and create-order response helpers  
+- `mcpserver/` — MCP tools + prompts, create-order helpers, order watch + MCP progress  
+- `.cursor/rules/` — Cursor rule (canonical under **`sender-mcp`**; duplicate at repo **`.cursor/rules/`** when workspace is `paycrest` root so rules load)  
 - `types/` — shared structs (config, tool inputs, provider account DTOs)
 
 
@@ -41,6 +42,10 @@ Go implementation of a [Model Context Protocol](https://modelcontextprotocol.io/
 | `PAYCREST_HTTP_TIMEOUT` | `.env` or host `env` | No | Client timeout (Go duration, e.g. `30s`). Default: `60s` |
 
 | `PAYCREST_MAX_RESPONSE_BYTES` | `.env` or host `env` | No | Max response body read (default `10485760`) |
+
+| `PAYCREST_AUTO_WATCH_AFTER_CREATE` | `.env` or host `env` | No | **`true`/`1`/`yes`/`on`** enables embedded status poll after `paycrest_create_order` **201** (15s interval, 429 backoff, MCP progress when supported). **Default off** — create returns in ~seconds with a manual `paycrest_watch_sender_order` hint. |
+
+| `PAYCREST_CREATE_ORDER_MAX_WAIT_SEC` | `.env` or host `env` | No | Max seconds for that embedded poll (clamped **10–3600**). Default **900**. |
 
 
 
@@ -120,7 +125,7 @@ Each user adds their own `PAYCREST_API_KEY` in **their** MCP config (e.g. user `
 
 Omit `PAYCREST_API_KEY` if you only use public tools (`paycrest_get_currencies`, `paycrest_get_rates`, etc.).
 
-
+Optional keys in the same `env` object: `PAYCREST_AUTO_WATCH_AFTER_CREATE` (`true` to poll inside create; default fast/off), `PAYCREST_CREATE_ORDER_MAX_WAIT_SEC`, etc.
 
 Use the full path to `paycrest-mcp` if it is not on `PATH`.
 
@@ -150,15 +155,35 @@ Use the full path to `paycrest-mcp` if it is not on `PATH`.
 
 | `paycrest_get_sender_order` | `GET /v2/sender/orders/{id}` |
 
+| `paycrest_watch_sender_order` | Polls `GET /v2/sender/orders/{id}` until terminal status or `max_wait_sec` (MCP progress when supported) |
+
 
 
 Responses are returned as **JSON text** (the raw HTTP body from the API). HTTP status `>= 400` is surfaced as an MCP tool error (`isError`).
 
 
 
+## MCP prompts
+
+
+
+Hosts (e.g. Cursor) may list these under **MCP → Prompts**. They do **not** add a Run button under a tool result card; they are a separate, repeatable way to pre-fill a user message after payment.
+
+
+
+| Prompt name | Purpose |
+
+|-------------|---------|
+
+| `paycrest_after_payment_watch` (**After payment — watch order**) | Argument `order_id` = `data.id` from create_order. Inserts text so the agent calls `paycrest_watch_sender_order` with that id. |
+
+
+
 ## Notes
 
 
+
+- **`paycrest_create_order` (HTTP 201):** By default (**`PAYCREST_AUTO_WATCH_AFTER_CREATE`** off) the tool **returns immediately** with pay-in details and a hint. For embedded polling, set **`PAYCREST_AUTO_WATCH_AFTER_CREATE=true`**. Cursor rules: **`sender-mcp/.cursor/rules/paycrest-mcp-order-flow.mdc`** (canonical) and **`.cursor/rules/paycrest-mcp-order-flow.mdc`** at repo root (duplicate so rules apply when the workspace is **`paycrest`**). After create, wait ~**10s** then **`paycrest_watch_sender_order`**; when the user says they **sent funds**, **call `paycrest_watch_sender_order` immediately** with the order id — do not only suggest manual checks.
 
 - This binary does **not** add routes to the aggregator; it is an HTTP client only.
 

@@ -31,10 +31,31 @@ func Load() types.Config {
 		}
 	}
 
+	autoWatch := false
+	switch strings.ToLower(strings.TrimSpace(os.Getenv("PAYCREST_AUTO_WATCH_AFTER_CREATE"))) {
+	case "1", "true", "yes", "on":
+		autoWatch = true
+	}
+
+	createMaxWait := 900
+	if v := strings.TrimSpace(os.Getenv("PAYCREST_CREATE_ORDER_MAX_WAIT_SEC")); v != "" {
+		if n, err := strconv.Atoi(v); err == nil {
+			createMaxWait = n
+			if createMaxWait < types.WatchWaitMinSec {
+				createMaxWait = types.WatchWaitMinSec
+			}
+			if createMaxWait > types.WatchWaitMaxSec {
+				createMaxWait = types.WatchWaitMaxSec
+			}
+		}
+	}
+
 	return types.Config{
-		BaseURL:      base,
-		APIKey:       strings.TrimSpace(os.Getenv("PAYCREST_API_KEY")),
-		HTTPTimeout:  timeout,
-		MaxRespBytes: maxBytes,
+		BaseURL:               base,
+		APIKey:                strings.TrimSpace(os.Getenv("PAYCREST_API_KEY")),
+		HTTPTimeout:           timeout,
+		MaxRespBytes:          maxBytes,
+		AutoWatchAfterCreate:  autoWatch,
+		CreateOrderMaxWaitSec: createMaxWait,
 	}
 }
