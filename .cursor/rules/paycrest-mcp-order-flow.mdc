@@ -9,16 +9,17 @@ Canonical rule for **`sender-mcp`**. If your Cursor workspace is the **`paycrest
 
 ## After a successful `paycrest_create_order` (HTTP 201)
 
-1. **Show** pay-in / `providerAccount` details and the order **id** (`data.id`) from the tool result immediately. When the tool includes a `--- Refund (`…`) ---` section (from `data.source.refundAccount`), show that block **before** the user **ACTION** block (the tool prints a line `ACTION` then one line such as `After you send the NGN, reply "paid" or "I have paid"`). **Always** include that ACTION block **verbatim** right after refund (or right after pay-in if there is no refund section). **Do not** replace it with prose that names MCP tools or pastes the order UUID in that sentence, and **do not** put only “check `paycrest_get_sender_order`” between refund and the ACTION block.
+1. **Show** pay-in / `providerAccount` details and the order **id** (`data.id`) from the tool result immediately. When the tool includes a `--- Refund (`…`) ---` section (from `data.source.refundAccount`), show that block **before** the user **ACTION** block. The tool prints a line `ACTION` then one line: for **onramp** fiat pay-in typically `After you send the NGN, reply "paid" or "I have paid"` (currency from the API); for **offramp** crypto pay-in `After the transfer confirms on-chain, reply paid`. **Always** include that ACTION block **verbatim** right after refund (onramp) or right after pay-in (offramp / no refund). **Do not** replace it with prose that names MCP tools or pastes the order UUID in that sentence, and **do not** put only “check `paycrest_get_sender_order`” between refund and the ACTION block on onramp.
 2. Unless the user says **not** to poll, **wait about 10 seconds**, then call **`paycrest_watch_sender_order`** with `{"id":"<uuid from data.id>","poll_interval_sec":10,"max_wait_sec":3600}` (tune `max_wait_sec` if needed). Use MCP progress when the host supports it.
 3. If **`PAYCREST_AUTO_WATCH_AFTER_CREATE`** is on, `paycrest_create_order` may already embed a long poll; still honor the user if they want a separate watch.
 
-## When the user says they paid / sent funds / NGN sent / money landed / funds arrived
+## When the user says they paid / sent funds / NGN sent / money landed / funds arrived / transfer confirmed on-chain
 
-1. **Do not** only reply with text like “check with `paycrest_get_sender_order`” — **call a tool**.
-2. If the **order id** is known from this chat (last successful `paycrest_create_order` or earlier message), **immediately** call **`paycrest_watch_sender_order`** with that `id` and reasonable `poll_interval_sec` / `max_wait_sec` until **settled**, **cancelled**, **refunded**, or **expired**.
-3. If the id is missing, call **`paycrest_list_sender_orders`** (or **`paycrest_get_sender_order`** if they gave an id), then **`paycrest_watch_sender_order`** on the right order.
+1. **Never end this turn with only `paycrest_get_sender_order`.** It is a **single** GET (no polling, no MCP `notifications/progress`). After payment intent, you **must** call **`paycrest_watch_sender_order`** on the correct `id` in the **same turn** (unless the user explicitly asked for a one-off snapshot only).
+2. **Do not** only reply with prose like “check `paycrest_get_sender_order`” — **call `paycrest_watch_sender_order`**.
+3. If the **order id** is known from this chat (last successful `paycrest_create_order` or earlier message), **immediately** call **`paycrest_watch_sender_order`** with that `id` and reasonable `poll_interval_sec` / `max_wait_sec` until **settled**, **cancelled**, **refunded**, or **expired**.
+4. If the id is missing, you may call **`paycrest_list_sender_orders`** or **`paycrest_get_sender_order`** **only** to discover the id — then **immediately** call **`paycrest_watch_sender_order`** on that order. **Do not** stop after get/list.
 
-Short messages like **PAID** count the same as “I have paid.” If the user inserted text from the MCP prompt **`paycrest_after_payment_watch`** (“After payment — watch order”), treat it the same: **call `paycrest_watch_sender_order`** with the id in that message (do not stop at suggestions).
+Short messages like **paid** / **PAID** count the same as “I have paid.” If the user inserted text from the MCP prompt **`paycrest_after_payment_watch`** (“After payment — watch order”), treat it the same: **call `paycrest_watch_sender_order`** with the id in that message (do not stop at suggestions).
 
 Do **not** wait for a second user prompt to start polling unless the user refuses automatic watch.

@@ -153,9 +153,9 @@ Use the full path to `paycrest-mcp` if it is not on `PATH`.
 
 | `paycrest_list_sender_orders` | `GET /v2/sender/orders` |
 
-| `paycrest_get_sender_order` | `GET /v2/sender/orders/{id}` |
+| `paycrest_watch_sender_order` | Polls `GET /v2/sender/orders/{id}` until terminal status or `max_wait_sec` (default **3600** s if omitted; MCP progress when supported) |
 
-| `paycrest_watch_sender_order` | Polls `GET /v2/sender/orders/{id}` until terminal status or `max_wait_sec` (MCP progress when supported) |
+| `paycrest_get_sender_order` | `GET /v2/sender/orders/{id}` (single snapshot; prefer watch after payment) |
 
 
 

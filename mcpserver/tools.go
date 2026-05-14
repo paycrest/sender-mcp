@@ -127,8 +127,15 @@ func RegisterTools(s *mcp.Server, c *paycrest.Client, cfg types.Config) {
 	})
 
 	mcp.AddTool(s, &mcp.Tool{
+		Name:        "paycrest_watch_sender_order",
+		Description: "Use this after the user pays or asks for live status until the order finishes. Polls GET /v2/sender/orders/{id} until terminal status (settled, cancelled, refunded, expired) or max_wait_sec elapses. Requires PAYCREST_API_KEY. Optional: poll_interval_sec (2–30, default 3), max_wait_sec (10–3600, default 3600 when omitted — up to 1 hour of polling). HTTP 429 waits (Retry-After or exponential backoff) and polling continues. When the MCP client sends a progress token with the call, the server emits notifications/progress with order_status updates for the host UI. Returns a timestamped transcript plus the last successful GET JSON when stopped.",
+	}, func(ctx context.Context, req *mcp.CallToolRequest, in types.WatchSenderOrderIn) (*mcp.CallToolResult, any, error) {
+		return runWatchSenderOrder(ctx, c, req, in)
+	})
+
+	mcp.AddTool(s, &mcp.Tool{
 		Name:        "paycrest_get_sender_order",
-		Description: "GET /v2/sender/orders/{id} — get one payment order by id (V2 schema). Requires PAYCREST_API_KEY.",
+		Description: "GET /v2/sender/orders/{id} — one snapshot (single GET) of a payment order by id (V2 schema). Requires PAYCREST_API_KEY. Does not poll. After the user says paid / funds sent / transfer confirmed on-chain, do not call this tool alone — call paycrest_watch_sender_order on that id so status updates repeat until terminal (MCP progress when the host sends a progress token). Use get only for a deliberate one-off peek or to resolve an id before immediately calling watch.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in types.GetOrderIn) (*mcp.CallToolResult, any, error) {
 		id := strings.TrimSpace(in.ID)
 		if id == "" {
@@ -140,13 +147,6 @@ func RegisterTools(s *mcp.Server, c *paycrest.Client, cfg types.Config) {
 			return nil, nil, err
 		}
 		return httpToolResult(status, data)
-	})
-
-	mcp.AddTool(s, &mcp.Tool{
-		Name:        "paycrest_watch_sender_order",
-		Description: "Poll GET /v2/sender/orders/{id} until the payment order reaches a terminal status (settled, cancelled, refunded, expired) or max_wait_sec elapses. Requires PAYCREST_API_KEY. Optional: poll_interval_sec (2–30, default 3), max_wait_sec (10–3600, default 180). HTTP 429 waits (Retry-After or exponential backoff) and polling continues. When the MCP client sends a progress token with the call, the server emits notifications/progress with order_status updates for the host UI. Returns a timestamped transcript plus the last successful GET JSON when stopped.",
-	}, func(ctx context.Context, req *mcp.CallToolRequest, in types.WatchSenderOrderIn) (*mcp.CallToolResult, any, error) {
-		return runWatchSenderOrder(ctx, c, req, in)
 	})
 
 	s.AddTool(&mcp.Tool{

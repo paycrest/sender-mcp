@@ -85,7 +85,7 @@ func watchSenderOrderTranscript(ctx context.Context, c *paycrest.Client, in type
 		return "watch error: id is required\n", true
 	}
 	intervalSec := clampInt(in.PollIntervalSec, 2, 30, 3)
-	maxWaitSec := clampInt(in.MaxWaitSec, types.WatchWaitMinSec, types.WatchWaitMaxSec, 180)
+	maxWaitSec := clampInt(in.MaxWaitSec, types.WatchWaitMinSec, types.WatchWaitMaxSec, types.WatchDefaultMaxWaitSec)
 	interval := time.Duration(intervalSec) * time.Second
 	deadline := time.Now().Add(time.Duration(maxWaitSec) * time.Second)
 	path := "/v2/sender/orders/" + url.PathEscape(id)
@@ -109,7 +109,7 @@ func watchSenderOrderTranscript(ctx context.Context, c *paycrest.Client, in type
 		}
 		if time.Now().After(deadline) {
 			b.WriteString(fmt.Sprintf("\nmax_wait_sec (%d) exceeded — last snapshot below.\n", maxWaitSec))
-			b.WriteString("If you already sent fiat, the API can still show pending until reconciliation completes. Use paycrest_get_sender_order with this id, or paycrest_watch_sender_order with a higher max_wait_sec (up to 3600).\n")
+			b.WriteString("Order still non-terminal when max_wait_sec elapsed. Run paycrest_watch_sender_order again on this id (optionally raise max_wait_sec up to 3600) — keep polling until Paycrest returns settled / cancelled / refunded / expired. Do not rely on a single paycrest_get_sender_order for that.\n")
 			prog.notify(ctx, float64(poll), fmt.Sprintf("stopped: max_wait_sec (%d) exceeded", maxWaitSec))
 			appendLastGETSnapshot(&b, lastBody)
 			return b.String(), false

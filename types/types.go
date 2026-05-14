@@ -6,6 +6,8 @@ import "time"
 const (
 	WatchWaitMinSec = 10
 	WatchWaitMaxSec = 3600
+	// WatchDefaultMaxWaitSec is the default max_wait_sec when the client omits it (poll until terminal or this cap).
+	WatchDefaultMaxWaitSec = 3600
 )
 
 // Config holds runtime settings for the MCP server and Paycrest HTTP client.
@@ -60,7 +62,7 @@ type WatchSenderOrderIn struct {
 	ID string `json:"id" jsonschema:"required payment order id (UUID from create or get order)"`
 	// PollIntervalSec is seconds between GET polls (clamped 2–30). Default 3.
 	PollIntervalSec int `json:"poll_interval_sec,omitempty"`
-	// MaxWaitSec is maximum seconds to keep polling (clamped WatchWaitMinSec–WatchWaitMaxSec). Default 180.
+	// MaxWaitSec is maximum seconds to keep polling (clamped WatchWaitMinSec–WatchWaitMaxSec). Default WatchDefaultMaxWaitSec (1 hour).
 	MaxWaitSec int `json:"max_wait_sec,omitempty"`
 }
 

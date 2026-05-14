@@ -156,7 +156,7 @@ func appendCreateOrderWatchHint(apiBody []byte) []byte {
 	}
 	b.WriteString("\n\n--- Status polling ---\n")
 	fmt.Fprintf(&b, "Order id: %s\n", d.ID)
-	fmt.Fprintf(&b, "Call paycrest_watch_sender_order with {\"id\":\"%s\"} (optional: \"poll_interval_sec\":10, \"max_wait_sec\":900; max %d) to poll GET /v2/sender/orders until settled, cancelled, refunded, or expired.\n", d.ID, types.WatchWaitMaxSec)
+	fmt.Fprintf(&b, "Call paycrest_watch_sender_order with {\"id\":\"%s\"} (optional: \"poll_interval_sec\":10, \"max_wait_sec\":3600; max %d) to poll GET /v2/sender/orders until settled, cancelled, refunded, or expired.\n", d.ID, types.WatchWaitMaxSec)
 	return []byte(b.String())
 }
 
