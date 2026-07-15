@@ -43,8 +43,6 @@ curl -fsSL https://raw.githubusercontent.com/paycrest/sender-mcp/main/scripts/in
 2. Saves it under `~/.paycrest/` with a fixed name (no manual rename)
 3. Merges a `paycrest` entry into `~/.cursor/mcp.json` (unless you skip that step)
 
-**Ignore** the **Source code (zip/tar.gz)** links on the Releases page — those are source archives, not the MCP binary.
-
 ---
 
 ## Configure Cursor (`mcp.json`)
@@ -91,7 +89,7 @@ Portable alternative using Cursor’s `${userHome}`:
 
 (Omit `.exe` on macOS/Linux.)
 
-Use **your own** dashboard key. Never share or commit it.
+Use **your own** dashboard key.
 
 ### Reload MCP
 
@@ -123,7 +121,7 @@ Typical flow the agent should follow:
 2. The agent shows **pay-in details** (bank / wallet / account info) and the order id.
 3. You send the funds (fiat or crypto, as instructed).
 4. Reply **`paid`** (or “I have paid” / “transfer confirmed”).
-5. The agent runs **one continuous watch** until the order is **settled**, **cancelled**, **refunded**, or **expired** — you should not need to keep clicking Run for each status hop.
+5. The agent runs **one continuous watch** until the order is **settled**, **cancelled**, **refunded**, or **expired**.
 
 You can also use the MCP prompt **“After payment — watch order”** and paste the order id if the chat lost context.
 
@@ -146,7 +144,7 @@ After you’ve paid:
 ## Upgrade
 
 1. **Quit Cursor completely** first (the running MCP holds a lock on the `.exe` / binary).
-2. Re-run the same install one-liner (or `.\scripts\install.ps1` / `./scripts/install.sh` from a clone).
+2. Re-run the same install one-liner.
 3. Open Cursor and reload MCP if needed.
 
 If you skip quitting Cursor, Windows often fails with “file in use” / access denied.
