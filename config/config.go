@@ -14,7 +14,9 @@ func Load() types.Config {
 	base := strings.TrimSpace(os.Getenv("PAYCREST_BASE_URL"))
 	base = strings.TrimRight(base, "/")
 	if base == "" {
-		base = "http://127.0.0.1:8080"
+		// Production aggregator — senders need not set PAYCREST_BASE_URL in Cursor mcp.json.
+		// Override via env/.env for local aggregator (e.g. http://127.0.0.1:8080).
+		base = "https://api.paycrest.io"
 	}
 
 	timeout := 60 * time.Second

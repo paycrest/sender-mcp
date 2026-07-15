@@ -2,11 +2,113 @@
 
 Go implementation of a [Model Context Protocol](https://modelcontextprotocol.io/) server that calls the **Paycrest aggregator** HTTP API (`/v2/...`). Use it from Cursor, Claude Desktop, or any MCP host that supports **stdio** transport.
 
-## Install (senders) — GitHub Releases
+## Install (senders) — fixed location (recommended)
 
-Do **not** commit binaries into git. Download a pre-built binary from:
+Install the binary to a **stable path** so you do not rename Release assets or hand-edit long Download paths.
 
-**https://github.com/paycrest/sender-mcp/releases**
+| OS | Install path |
+|----|----------------|
+| Windows | `%USERPROFILE%\.paycrest\paycrest-mcp.exe` |
+| macOS / Linux | `~/.paycrest/paycrest-mcp` |
+
+### One-line install
+
+**Note:** If the GitHub repo is **private**, anonymous downloads fail. Friends need either:
+
+- **GitHub CLI** logged in (`gh auth login`), then run the install from a clone / copied script, **or**
+- A **public** Releases page, **or**
+- Manual download of the `.exe` while logged into GitHub, then copy to the fixed path below.
+
+**Windows (PowerShell — not Git Bash):**
+
+```powershell
+# From a clone (works with private repo if `gh auth login` succeeded):
+cd path\to\sender-mcp
+.\scripts\install.ps1
+```
+
+After scripts are on `main` **and** the repo is public (or you use a token):
+
+```powershell
+irm https://raw.githubusercontent.com/paycrest/sender-mcp/main/scripts/install.ps1 | iex
+```
+
+Optional: `.\scripts\install.ps1 -ApiKey "your-sender-api-key"`  
+Or set user env `PAYCREST_API_KEY` first; the script will pick it up.
+
+**macOS / Linux:**
+
+```bash
+# Preferred when repo is private (requires: gh auth login):
+./scripts/install.sh
+```
+
+Public one-liner (after push to `main`):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/paycrest/sender-mcp/main/scripts/install.sh | bash
+```
+
+Optional: `PAYCREST_API_KEY=your-key bash scripts/install.sh`
+
+The script:
+
+1. Downloads the matching asset from [GitHub Releases](https://github.com/paycrest/sender-mcp/releases)
+2. Saves it under `~/.paycrest/` with a **fixed name** (no rename by hand)
+3. Merges a `paycrest` entry into `~/.cursor/mcp.json` (unless you pass `-SkipMcpJson` / `SKIP_MCP_JSON=1`)
+
+Then **reload MCP** in Cursor (Settings → Tools & MCP) or restart Cursor.
+
+### Cursor `mcp.json` (after install)
+
+The install script writes something equivalent to (API key only — aggregator URL defaults to production inside the binary):
+
+**Windows**
+
+```json
+{
+  "mcpServers": {
+    "paycrest": {
+      "command": "C:/Users/YOU/.paycrest/paycrest-mcp.exe",
+      "env": {
+        "PAYCREST_API_KEY": "${env:PAYCREST_API_KEY}"
+      }
+    }
+  }
+}
+```
+
+**macOS / Linux**
+
+```json
+{
+  "mcpServers": {
+    "paycrest": {
+      "command": "/Users/YOU/.paycrest/paycrest-mcp",
+      "env": {
+        "PAYCREST_API_KEY": "${env:PAYCREST_API_KEY}"
+      }
+    }
+  }
+}
+```
+
+Each sender uses **their own** dashboard API key (`PAYCREST_API_KEY`) — never share one key.
+
+You can also use Cursor’s `${userHome}` if you prefer a portable config:
+
+```json
+"command": "${userHome}/.paycrest/paycrest-mcp.exe"
+```
+
+(omit `.exe` on macOS/Linux)
+
+### Manual download (optional)
+
+If you prefer not to run the script, download from **https://github.com/paycrest/sender-mcp/releases** and either:
+
+- Save/rename into the fixed path above, **or**
+- Point `command` at the downloaded file path as-is (no rename required)
 
 | Your OS | Asset to download |
 |---------|-------------------|
@@ -16,29 +118,9 @@ Do **not** commit binaries into git. Download a pre-built binary from:
 | Linux (x64) | `paycrest-mcp_vX.Y.Z_linux_amd64` |
 | Linux (ARM64) | `paycrest-mcp_vX.Y.Z_linux_arm64` |
 
-Optional: verify with `checksums.txt` on the same release (`sha256sum -c` / equivalent).
+Ignore **Source code (zip/tar.gz)** on the Release page — those are not the MCP binary.
 
-### Cursor setup (own API key)
-
-1. Save the binary somewhere permanent (e.g. `C:\Tools\paycrest-mcp.exe` or `~/bin/paycrest-mcp`).
-2. On macOS/Linux: `chmod +x` the file.
-3. In **`~/.cursor/mcp.json`** (or project `.cursor/mcp.json`), point `command` at **that file** and set **your** sender API key from the Paycrest dashboard:
-
-```json
-{
-  "mcpServers": {
-    "paycrest": {
-      "command": "C:/Tools/paycrest-mcp_v0.1.0_windows_amd64.exe",
-      "env": {
-        "PAYCREST_BASE_URL": "https://api.paycrest.io",
-        "PAYCREST_API_KEY": "your-sender-api-key"
-      }
-    }
-  }
-}
-```
-
-4. Reload MCP in Cursor. Each sender uses **their own** `PAYCREST_API_KEY` — never share one key in a team chat or commit it.
+Optional: verify with `checksums.txt` on the same release.
 
 ### Maintainers — publish a release
 
@@ -63,13 +145,14 @@ GitHub Actions (`.github/workflows/release.yml`) runs tests, builds all platform
 - `paycrest/` — HTTP client for the aggregator
 - `mcpserver/` — MCP tools + prompts, create-order helpers, order watch + MCP progress
 - `.cursor/rules/` — Cursor rule (canonical under **`sender-mcp`**; duplicate at repo **`.cursor/rules/`** when workspace is `paycrest` root so rules load)
+- `scripts/install.ps1` / `scripts/install.sh` — install latest Release binary to `~/.paycrest/` and update Cursor `mcp.json`
 - `types/` — shared structs (config, tool inputs, provider account DTOs)
 
 ## Environment
 
 | Variable | Where to set | Required | Description |
 |----------|----------------|----------|-------------|
-| `PAYCREST_BASE_URL` | `.env` and/or MCP host `env` | No | Aggregator base URL (no trailing path). Default: `http://127.0.0.1:8080` |
+| `PAYCREST_BASE_URL` | Optional `.env` (developers only) | No | Aggregator base URL. **Default: `https://api.paycrest.io`**. Senders should **not** set this in Cursor. Use e.g. `http://127.0.0.1:8080` only for a local aggregator. |
 | `PAYCREST_API_KEY` | **MCP host `env` only** (per user) | For sender tools | Sender API key, sent as `API-Key`. Each integrator uses their own key — **do not** commit it in `.env` in shared repos. |
 | `PAYCREST_HTTP_TIMEOUT` | `.env` or host `env` | No | Client timeout (Go duration, e.g. `30s`). Default: `60s` |
 | `PAYCREST_MAX_RESPONSE_BYTES` | `.env` or host `env` | No | Max response body read (default `10485760`) |
@@ -98,27 +181,28 @@ go build -o paycrest-mcp .
 
 ## Cursor (example)
 
+Prefer the [fixed-location install](#install-senders--fixed-location-recommended) above. Manual example:
+
 Each user adds their own `PAYCREST_API_KEY` in **their** MCP config (e.g. user `~/.cursor/mcp.json`). Do not commit real keys in project repos.
 
 ```json
 {
   "mcpServers": {
     "paycrest": {
-      "command": "C:/full/path/to/paycrest-mcp.exe",
+      "command": "${userHome}/.paycrest/paycrest-mcp.exe",
       "env": {
-        "PAYCREST_BASE_URL": "https://api.paycrest.io",
-        "PAYCREST_API_KEY": "your-sender-api-key"
+        "PAYCREST_API_KEY": "${env:PAYCREST_API_KEY}"
       }
     }
   }
 }
 ```
 
+On macOS/Linux use `"${userHome}/.paycrest/paycrest-mcp"` (no `.exe`).
+
 Omit `PAYCREST_API_KEY` if you only use public tools (`paycrest_get_currencies`, `paycrest_get_rates`, etc.).
 
 Optional keys in the same `env` object: `PAYCREST_AUTO_WATCH_AFTER_CREATE` (`true` to poll inside create; default fast/off), `PAYCREST_CREATE_ORDER_MAX_WAIT_SEC`, etc.
-
-Use the full path to `paycrest-mcp` if it is not on `PATH`.
 
 ## Tools (MVP)
 
