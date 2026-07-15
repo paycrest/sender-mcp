@@ -1,5 +1,9 @@
+# Local / CI build outputs (publish via GitHub Releases, do not commit)
 /paycrest-mcp
 /paycrest-mcp.exe
+/paycrest-mcp.exe~
+*.exe~
+/dist/
 
 # Local secrets (use .env.example as the template)
 .env
