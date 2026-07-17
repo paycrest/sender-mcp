@@ -45,29 +45,37 @@ fi
 
 echo "Fetching release (${TAG}) from github.com/${REPO} ..."
 RELEASE_JSON="$(curl -fsSL -H "Accept: application/vnd.github+json" -H "User-Agent: paycrest-mcp-install" "${API_URL}")"
-eval "$(printf '%s' "${RELEASE_JSON}" | ASSET_SUFFIX="${ASSET_SUFFIX}" python3 -c '
+
+# Parse the release without eval or nested shell quoting.
+{
+  IFS= read -r TAG_NAME
+  IFS= read -r DOWNLOAD_URL
+  IFS= read -r ASSET_NAME
+} < <(printf '%s' "${RELEASE_JSON}" | ASSET_SUFFIX="${ASSET_SUFFIX}" python3 -c "
 import json, os, sys
 rel = json.load(sys.stdin)
-suffix = os.environ["ASSET_SUFFIX"]
-tag = rel.get("tag_name") or ""
-url = ""
-name = ""
-for a in rel.get("assets") or []:
-    n = a.get("name") or ""
-    if suffix in n and "checksums" not in n:
-        url = a.get("browser_download_url") or ""
-        name = n
+suffix = os.environ['ASSET_SUFFIX']
+tag = rel.get('tag_name') or ''
+url = ''
+name = ''
+for asset in rel.get('assets') or []:
+    asset_name = asset.get('name') or ''
+    if suffix in asset_name and 'checksums' not in asset_name:
+        url = asset.get('browser_download_url') or ''
+        name = asset_name
         break
 if not url:
-    sys.stderr.write(f"No asset matching *{suffix}* on release {tag}\n")
+    sys.stderr.write('No asset matching *%s* on release %s\n' % (suffix, tag))
     sys.exit(1)
-# shell-safe export
-def sh(s: str) -> str:
-    return "'" + s.replace("'", "'"'"'") + "'"
-print(f"TAG_NAME={sh(tag)}")
-print(f"DOWNLOAD_URL={sh(url)}")
-print(f"ASSET_NAME={sh(name)}")
-')"
+print(tag)
+print(url)
+print(name)
+")
+
+if [[ -z "${DOWNLOAD_URL}" || -z "${ASSET_NAME}" ]]; then
+  echo "Failed to resolve release asset for ${ASSET_SUFFIX}." >&2
+  exit 1
+fi
 
 mkdir -p "${INSTALL_DIR}"
 echo "Downloading ${ASSET_NAME} → ${DEST}"
