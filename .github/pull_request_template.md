@@ -5,6 +5,13 @@ Jira Issue: <!-- e.g. https://paycrest-io.atlassian.net/browse/KAN-123 -->
 ### Description
 
 > Describe the purpose of this PR (MCP tools, prompts, Paycrest client, install scripts, etc.).
+>
+> Spec and acceptance criteria live on the linked Jira ticket — not in this template.
+
+### Self-review
+
+- [ ] Reviewed diff against Jira acceptance criteria (including failure cases)
+- [ ] CodeRabbit / CI green
 
 ### References
 
@@ -14,6 +21,10 @@ Jira Issue: <!-- e.g. https://paycrest-io.atlassian.net/browse/KAN-123 -->
 ### Testing
 
 > Describe `go test ./...`, manual MCP smoke tests in Cursor, and release workflow checks if applicable.
+
+### Staging
+
+- [ ] MCP smoke test against staging Paycrest API
 
 ### Checklist
 
