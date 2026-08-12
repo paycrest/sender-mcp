@@ -2,7 +2,7 @@
 
 Copy this into the **Jira ticket description** when creating work for the sender-mcp repo. The ticket is the single source of truth — no spec, no build. Add a **flowchart in a Jira comment** when the change touches multi-step order create/watch flows.
 
-**Label:** `repo-sender-mcp` (required)
+**Label:** `sender-mcp` (required)
 
 ---
 
