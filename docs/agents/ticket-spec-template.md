@@ -1,18 +1,44 @@
 # Ticket / Spec template (Jira KAN)
 
-Copy this into the **Jira ticket description** when creating work for the sender-mcp repo. The ticket is the single source of truth — no spec, no build. Add a **flowchart in a Jira comment** when the change touches multi-step order create/watch flows.
+Fill **typed Jira fields** (not one markdown dump in Description). The ticket is the single source of truth — no spec, no build. Add a **flowchart in a Jira comment** when the change involves multi-step flows or navigation (e.g. order create/watch flows).
 
 **Label:** `sender-mcp` (required)
 
+**Choose exactly one issue type.** Do **not** mix Bug fields with Task fields. Do **not** use Story or Feature.
+
+**Field format:** every field below except `summary` and Money-safety is **rich text (ADF)** — send `contentFormat: "adf"` with a `{"type": "doc", ...}` object. Markdown strings are rejected or stored literally, so `**bold**` and list markers end up visible in the ticket. See [issue-tracker.md](issue-tracker.md#field-formats-adf).
+
+| Jira issue type | Use this section |
+|-----------------|------------------|
+| **Task** (enhancement, chore, new tool/prompt) | [Task](#task) |
+| **Bug** (regression, MCP tool failure) | [Bug](#bug) |
+
 ---
 
-## User Story
+## Task
+
+Use for issue type **Task** only. Set fields via Atlassian MCP — `additional_fields` on create, `fields` on edit — with `contentFormat: "adf"` for every rich-text value.
+
+| Field | Jira field id | Required |
+|-------|---------------|----------|
+| Summary (title) | `summary` | yes |
+| Description (short overview only) | `description` | no |
+| User story | `customfield_10126` | yes |
+| Acceptance criteria | `customfield_10127` | yes |
+| Tech details | `customfield_10128` | yes |
+| Money-safety | `customfield_10129` (select: `{"value": "Yes"}` / `{"value": "No"}`) | yes |
+| Notes / assumptions | `customfield_10130` | no |
+| Open questions | `customfield_10131` | no |
+
+### Description
+
+Short what/why overview only. Full user POV goes in **User story**.
+
+### User story (`customfield_10126`)
 
 Add the details of this issue from the user's POV.
 
----
-
-## Acceptance Criteria
+### Acceptance criteria (`customfield_10127`)
 
 Include at least one **failure-case** scenario, not only the happy path.
 
@@ -24,47 +50,58 @@ Include at least one **failure-case** scenario, not only the happy path.
    **WHEN** …
    **THEN** …
 
----
-
-## Tech Details
+### Tech details (`customfield_10128`)
 
 - `mcpserver/` tools, prompts, or handlers affected
 - Paycrest API client changes
 - [docs/USER_GUIDE.md](../USER_GUIDE.md) updates if sender-facing behavior changes
 - Order create/watch flow vs `.cursor/rules/paycrest-mcp-order-flow.mdc`
 
----
-
-## Money-safety
+### Money-safety (`customfield_10129`)
 
 - Touches order creation, payment instructions, or watch/poll behavior on live orders? **Yes / No**
 - If **Yes**: second human reviewer required before prod; call out failure cases and never auto-submit payments.
 - Tooling, logging, or docs with no order side effects: usually **No**.
 
----
-
-## Notes / Assumptions
+### Notes / assumptions (`customfield_10130`)
 
 - Assumptions that must stay true for this change to remain correct.
 
----
-
-## Open Questions
+### Open questions (`customfield_10131`)
 
 - …
 
 ---
 
-## Bug tickets (shorter variant)
+## Bug
 
-For **Bug** issue type, use at minimum:
+Use for issue type **Bug** only. Do **not** set Task fields (no User story, Acceptance criteria, Tech details, Money-safety, Notes, or Open questions). Put money-safety notes under **Expected behaviour** when relevant.
 
-**Describe the bug** — what is wrong (tool error, wrong pay-in details, watch stops early).
+| Field | Jira field id | Required |
+|-------|---------------|----------|
+| Summary (title) | `summary` | yes |
+| Description (describe the bug) | `description` | no |
+| To reproduce | `customfield_10123` | yes |
+| Expected behaviour | `customfield_10124` | yes |
+| Environment | `environment` | yes |
+| Additional context | `customfield_10125` | no |
 
-**To reproduce** — MCP tool, args, environment.
+### Description
 
-**Expected** — correct tool output or flow.
+What is wrong (tool error, wrong pay-in details, watch stops early). Include enough technical context for an engineer to start.
 
-**Environment** — staging vs production API.
+### To reproduce (`customfield_10123`)
 
-**Acceptance criteria** — **GIVEN / WHEN / THEN** for the fix, including one regression check.
+MCP tool, args, and environment.
+
+### Expected behaviour (`customfield_10124`)
+
+Correct tool output or flow. If the bug is on a money-moving path, state **Money-safety: Yes** (second human reviewer before prod) here.
+
+### Environment (`environment`)
+
+Staging vs production API.
+
+### Additional context (`customfield_10125`)
+
+Logs, links, screenshots notes, or other context.
